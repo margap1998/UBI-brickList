@@ -9,7 +9,9 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
-        <activity android:name=".projectView"></activity>
+        <activity
+            android:name=".projectView"
+            android:parentActivityName=".MainActivity" />
         <activity
             android:name=".addProject"
             android:parentActivityName=".MainActivity" />
