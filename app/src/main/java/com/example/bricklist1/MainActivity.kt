@@ -1,6 +1,7 @@
 package com.example.bricklist1
 
 import android.content.Intent
+import android.graphics.BitmapFactory
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import kotlinx.android.synthetic.main.activity_main.*
@@ -14,16 +15,18 @@ class MainActivity : AppCompatActivity() {
             buttonOnClick()
         }
         testText.setOnClickListener{
-            val intent = Intent(this, projectView::class.java)
-            startActivity(intent)
+            textOnClick()
         }
     }
 
-
+    fun textOnClick(){
+        val intent = Intent(this, projectView::class.java)
+        intent.putExtra("nameOfProject","TEST")
+        startActivity(intent)
+    }
     fun buttonOnClick()
     {
-        var ap = addProject()
-        val intent = Intent(this, ap.javaClass)
+        val intent = Intent(this, addProject::class.java)
         startActivity(intent)
     }
 

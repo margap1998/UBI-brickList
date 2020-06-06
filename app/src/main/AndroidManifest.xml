@@ -10,6 +10,9 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
         <activity
+            android:name=".SettingsActivity"
+            android:parentActivityName=".projectView"/>
+        <activity
             android:name=".projectView"
             android:parentActivityName=".MainActivity" />
         <activity
