@@ -1,8 +1,8 @@
 package com.example.bricklist1
 
+import android.graphics.Color
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
-import androidx.preference.PreferenceFragmentCompat
 import kotlinx.android.synthetic.main.settings_activity.*
 
 class SettingsActivity : AppCompatActivity() {
@@ -11,6 +11,7 @@ class SettingsActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.settings_activity)
         urlPrefixTV.setText(urlStr)
+        if ( actualProject.active == 1) {actSwitch.text="Active";actSwitch.setBackgroundColor(Color.GREEN)} else {actSwitch.text="Inactive"; actSwitch.setBackgroundColor(Color.RED)}
         saveSAButton.setOnClickListener {
             urlStr = urlPrefixTV.text.toString()
         }

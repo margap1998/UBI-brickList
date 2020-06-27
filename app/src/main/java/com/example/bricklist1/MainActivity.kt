@@ -21,9 +21,9 @@ import javax.xml.transform.stream.StreamResult
 var url=""
 
 class MainActivity : AppCompatActivity() {
-    val db = dbOpener(this,null,"BrickList.db")
-    val dbM = dbManager(this)
+    lateinit var dbM:dbManager
     override fun onCreate(savedInstanceState: Bundle?) {
+        dbM = dbManager(this)
         super.onCreate(savedInstanceState)
         readSettings()
         listProjects()

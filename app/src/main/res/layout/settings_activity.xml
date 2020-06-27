@@ -30,17 +30,11 @@
             android:inputType="text"
             android:textSize="14sp" />
 
-        <Switch
-            android:id="@+id/swActive"
+        <Button
+            android:id="@+id/actSwitch"
             android:layout_width="match_parent"
-            android:layout_height="41dp"
-            android:checked="false"
-            android:showText="false"
-            android:splitTrack="false"
-            android:text="Inactive"
-            android:textOff="Active"
-            android:textOn="Inactive"
-            tools:checked="false" />
+            android:layout_height="37dp"
+            android:text="Button" />
 
         <Button
             android:id="@+id/saveSAButton"

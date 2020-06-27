@@ -1,6 +1,7 @@
 package com.example.bricklist1
 
 import android.content.Intent
+import android.os.AsyncTask
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import com.example.bricklist1.dbhandler.dbManager
@@ -13,9 +14,27 @@ import javax.xml.parsers.DocumentBuilderFactory
 
 
 class addProject : AppCompatActivity() {
-    val dbM = dbManager(this)
-
+    class XMLDownloader : AsyncTask<String,Any,InputStream?>(){
+        override fun doInBackground(vararg params: String?): InputStream? {
+            val urlS = params[0]
+            return if (urlS!=null) try {
+                    val url = URL(urlS)
+                    val connection: HttpURLConnection = url
+                        .openConnection() as HttpURLConnection
+                    connection.setDoInput(true)
+                    connection.connect()
+                    connection.getInputStream()
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    null
+                }
+            else
+                null
+        }
+    }
+    lateinit var dbM:dbManager
     override fun onCreate(savedInstanceState: Bundle?) {
+        dbM = dbManager(this)
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_add_project)
         addProButton.setOnClickListener {
@@ -24,7 +43,7 @@ class addProject : AppCompatActivity() {
     }
 
     fun addProject(){
-        val url = "urlStr${idEdit.text.toString()}.xml"
+        val url = "${urlStr}${idEdit.text}.xml"
         val name = nameEdit.text.toString()
         val p =readProjectFromXML(url,name)
         if (p!=null){
@@ -39,15 +58,12 @@ class addProject : AppCompatActivity() {
     }
 
 
-    fun readProjectFromXML(urlS:String,name:String): project?{
+    private fun readProjectFromXML(urlS:String, name:String): project?{
         var res: project? = null
-        try {
-            val url = URL(urlS)
-            val connection: HttpURLConnection = url
-                .openConnection() as HttpURLConnection
-            connection.setDoInput(true)
-            connection.connect()
-            val input: InputStream = connection.getInputStream()
+        val xd = XMLDownloader()
+        xd.execute(urlS)
+        val input = xd.get()
+        if (input !=null) {
             val docBuilder = DocumentBuilderFactory.newInstance().newDocumentBuilder()
             val doc = docBuilder.parse(input)
             res = project(name)
@@ -63,18 +79,15 @@ class addProject : AppCompatActivity() {
 
 
 
-            for (i in 1..iLen) if(nl.item(i).textContent =="N"){
+            for (i in 1..iLen) if (nl.item(i).textContent == "N") {
                 val colorID = coll.item(i).textContent.toInt()
                 val itemtype = il.item(i).textContent
                 val required = ql.item(i).textContent.toInt()
                 val code = cl.item(i).textContent
-                val extra = if(el.item(i).textContent =="N") 0 else 1
-                val part = dbM.getPartFromXML(code,colorID,itemtype,required,extra)
-                if (part!=null) res.partlist.add(part)
+                val extra = if (el.item(i).textContent == "N") 0 else 1
+                val part = dbM.getPartFromXML(code, colorID, itemtype, required, extra)
+                if (part != null) res.partlist.add(part)
             }
-        } catch (e: Exception) {
-            e.printStackTrace()
-            res = null
         }
         return res
     }
