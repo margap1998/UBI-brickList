@@ -3,6 +3,7 @@ package com.example.bricklist1
 import android.content.Intent
 import android.os.AsyncTask
 import android.os.Bundle
+import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 import com.example.bricklist1.dbhandler.dbManager
 import com.example.bricklist1.model.project
@@ -14,22 +15,58 @@ import javax.xml.parsers.DocumentBuilderFactory
 
 
 class addProject : AppCompatActivity() {
-    class XMLDownloader : AsyncTask<String,Any,InputStream?>(){
-        override fun doInBackground(vararg params: String?): InputStream? {
+    class XMLDownloader : AsyncTask<String,Any,project?>(){
+        lateinit var dbM:dbManager
+        override fun doInBackground(vararg params: String?): project? {
             val urlS = params[0]
-            return if (urlS!=null) try {
-                    val url = URL(urlS)
-                    val connection: HttpURLConnection = url
-                        .openConnection() as HttpURLConnection
-                    connection.setDoInput(true)
-                    connection.connect()
-                    connection.getInputStream()
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                    null
+            val name = params[1]
+            return if (name!=null && urlS!=null){
+                readProjectFromXML(urlS,name)
+            } else null
+        }
+
+        private fun readProjectFromXML(urlS:String, name:String): project?{
+            var res: project? = null
+            try {
+                val url = URL(urlS)
+                val connection: HttpURLConnection = url
+                    .openConnection() as HttpURLConnection
+                connection.setDoInput(true)
+                Log.i("XMLDownload","łączenie")
+                connection.connect()
+                val input: InputStream = connection.getInputStream()
+                val docBuilder = DocumentBuilderFactory.newInstance().newDocumentBuilder()
+                val doc = docBuilder.parse(input)
+                res = project(name)
+                res.active = 1
+                val iLen = doc.getElementsByTagName("ITEM").length
+
+                val nl = doc.getElementsByTagName("ALTERNATE")
+                val il = doc.getElementsByTagName("ITEMTYPE")
+                val cl = doc.getElementsByTagName("ITEMID")
+                val ql = doc.getElementsByTagName("QTY")
+                val coll = doc.getElementsByTagName("COLOR")
+                val el = doc.getElementsByTagName("EXTRA")
+
+
+
+                for (i in 0 until iLen) if(nl.item(i).textContent =="N"){
+                    val colorID = coll.item(i).textContent.toInt()
+                    val itemtype = il.item(i).textContent
+                    val required = ql.item(i).textContent.toInt()
+                    val code = cl.item(i).textContent
+                    val extra = if(el.item(i).textContent =="N") 0 else 1
+                    Log.i("${i}:[type:$itemtype, code:$code, color:${colorID}]","part loading")
+                    val part = dbM.getPartFromXML(code,colorID,itemtype,required,extra)
+                    if (part!=null) res.partlist.add(part) else{
+                        Log.i(code,"ERROR nie ma partu")
+                    }
                 }
-            else
-                null
+            } catch (e: Exception) {
+                e.printStackTrace()
+                res = null
+            }
+            return res
         }
     }
     lateinit var dbM:dbManager
@@ -45,7 +82,10 @@ class addProject : AppCompatActivity() {
     fun addProject(){
         val url = "${urlStr}${idEdit.text}.xml"
         val name = nameEdit.text.toString()
-        val p =readProjectFromXML(url,name)
+        val xd = XMLDownloader()
+        xd.dbM = dbM
+        val at = xd.execute(url,name)
+        val p = at.get()
         if (p!=null){
             dbM.insertNewInventory(p)
             dbM.close()
@@ -54,43 +94,13 @@ class addProject : AppCompatActivity() {
             val intent = Intent(this, projectView::class.java)
             intent.putExtra("nameOfProject",p.name)
             startActivity(intent)
+        }else{
+            val intent = Intent(this, ErrorAct::class.java)
+            startActivity(intent)
         }
     }
 
 
-    private fun readProjectFromXML(urlS:String, name:String): project?{
-        var res: project? = null
-        val xd = XMLDownloader()
-        xd.execute(urlS)
-        val input = xd.get()
-        if (input !=null) {
-            val docBuilder = DocumentBuilderFactory.newInstance().newDocumentBuilder()
-            val doc = docBuilder.parse(input)
-            res = project(name)
-            res.active = 1
-            val iLen = doc.getElementsByTagName("ITEM").length
-
-            val nl = doc.getElementsByTagName("ALTERNATE")
-            val il = doc.getElementsByTagName("ITEMTYPE")
-            val cl = doc.getElementsByTagName("ITEMID")
-            val ql = doc.getElementsByTagName("QTY")
-            val coll = doc.getElementsByTagName("COLOR")
-            val el = doc.getElementsByTagName("EXTRA")
-
-
-
-            for (i in 1..iLen) if (nl.item(i).textContent == "N") {
-                val colorID = coll.item(i).textContent.toInt()
-                val itemtype = il.item(i).textContent
-                val required = ql.item(i).textContent.toInt()
-                val code = cl.item(i).textContent
-                val extra = if (el.item(i).textContent == "N") 0 else 1
-                val part = dbM.getPartFromXML(code, colorID, itemtype, required, extra)
-                if (part != null) res.partlist.add(part)
-            }
-        }
-        return res
-    }
 
     override fun onDestroy() {
         super.onDestroy()

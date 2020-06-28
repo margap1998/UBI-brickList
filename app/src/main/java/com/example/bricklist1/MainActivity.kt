@@ -1,11 +1,12 @@
 package com.example.bricklist1
 
+import android.content.Context
 import android.content.Intent
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.util.Log
 import android.widget.TextView
 import com.example.bricklist1.dbhandler.dbManager
-import com.example.bricklist1.dbhandler.dbOpener
 import kotlinx.android.synthetic.main.activity_main.*
 import org.w3c.dom.Document
 import org.w3c.dom.Element
@@ -18,20 +19,20 @@ import javax.xml.transform.TransformerFactory
 import javax.xml.transform.dom.DOMSource
 import javax.xml.transform.stream.StreamResult
 
-var url=""
 
 class MainActivity : AppCompatActivity() {
     lateinit var dbM:dbManager
     override fun onCreate(savedInstanceState: Bundle?) {
+        projectList = ArrayList()
         dbM = dbManager(this)
         super.onCreate(savedInstanceState)
         readSettings()
-        listProjects()
-        dbM.loadProjects()
         setContentView(R.layout.activity_main)
         addButton.setOnClickListener {
             buttonOnClick()
         }
+        dbM.loadProjects(projectList)
+        listProjects(this)
     }
 
     private fun buttonOnClick()
@@ -41,11 +42,6 @@ class MainActivity : AppCompatActivity() {
         dbM.close()
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
-        dbM.close()
-        writeXMLsettings()
-    }
 
     private fun writeXMLsettings()
     {
@@ -90,19 +86,26 @@ class MainActivity : AppCompatActivity() {
             urlStr = "http://fcds.cs.put.poznan.pl/MyWeb/BL/"
         }
     }
-
-    private fun listProjects(){
+    private fun listProjects(context: Context){
         for (pr in projectList){
-            val a = TextView(this)
+            Log.i("Menu",pr.name)
+            val a:TextView = TextView(context)
             a.text = pr.name
             a.setOnClickListener{
                 actualProject = pr
                 dbM.updateLastAccess(pr.idProject)
-                val intent = Intent(this, projectView::class.java)
-                intent.putExtra("nameOfProject",pr.name)
-                startActivity(intent)
+                dbM.loadImages(pr)
                 dbM.close()
+                val intent = Intent(this, projectView::class.java)
+                startActivity(intent)
             }
+            linearLayout.addView(a)
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        dbM.close()
+        writeXMLsettings()
     }
 }

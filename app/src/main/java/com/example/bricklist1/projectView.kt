@@ -1,21 +1,15 @@
 package com.example.bricklist1
 
-import android.Manifest
 import android.app.Activity
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.net.Uri
-import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import com.example.bricklist1.model.project
+import com.example.bricklist1.dbhandler.dbManager
 import kotlinx.android.synthetic.main.activity_project_view.*
 import org.w3c.dom.Document
 import org.w3c.dom.Element
 import java.io.BufferedOutputStream
-import java.io.File
-import java.io.FileOutputStream
-import java.io.OutputStream
 import javax.xml.parsers.DocumentBuilder
 import javax.xml.parsers.DocumentBuilderFactory
 import javax.xml.transform.OutputKeys
@@ -51,7 +45,6 @@ class projectView() : AppCompatActivity() {
             if (intent.resolveActivity(packageManager)!=null){
                 startActivity(chooser)
             }
-            finish()
         }
 
         for (item in actualProject.partlist){
@@ -115,5 +108,9 @@ class projectView() : AppCompatActivity() {
                 }
             }
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
     }
 }

@@ -15,5 +15,10 @@ class SettingsActivity : AppCompatActivity() {
         saveSAButton.setOnClickListener {
             urlStr = urlPrefixTV.text.toString()
         }
+        actSwitch.setOnClickListener() {
+            actualProject.active = kotlin.math.abs(actualProject.active - 1)
+            if ( actualProject.active == 1) {actSwitch.text="Active";actSwitch.setBackgroundColor(Color.GREEN)} else {actSwitch.text="Inactive"; actSwitch.setBackgroundColor(Color.RED)}
+
+        }
     }
 }

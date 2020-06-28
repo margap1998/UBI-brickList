@@ -2,5 +2,6 @@
 <network-security-config><base-config cleartextTrafficPermitted="true" />
     <domain-config cleartextTrafficPermitted="true">
         <domain includeSubdomains="true">http://fcds.cs.put.poznan.pl</domain>
+        <domain includeSubdomains="true">http://img.bricklink.com/</domain>
     </domain-config>
 </network-security-config>
