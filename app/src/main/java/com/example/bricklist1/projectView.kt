@@ -23,8 +23,8 @@ class projectView() : AppCompatActivity() {
     val EXPORT_FILE = 1
     fun showProject(){
         labTV.text = projName
-        for (a in actualProject.partlist){
-            partsListView.addView(a.createView(this))
+        for (i in 0 until actualProject.partlist.size){
+            partsListView.addView(actualProject.partlist[i].createView(this))
         }
     }
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -35,6 +35,7 @@ class projectView() : AppCompatActivity() {
             val intent = Intent(this, SettingsActivity::class.java)
             startActivity(intent)
         }
+        howMany.text = "${actualProject.partlist.size} Elements"
         exportList.setOnClickListener {
             val intent = Intent(Intent.ACTION_CREATE_DOCUMENT)
             intent.setType("text/xml")
@@ -45,10 +46,6 @@ class projectView() : AppCompatActivity() {
             if (intent.resolveActivity(packageManager)!=null){
                 startActivity(chooser)
             }
-        }
-
-        for (item in actualProject.partlist){
-            partsListView.addView(item.createView(this))
         }
     }
 
@@ -108,9 +105,5 @@ class projectView() : AppCompatActivity() {
                 }
             }
         }
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
     }
 }

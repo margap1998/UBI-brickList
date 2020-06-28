@@ -5,15 +5,69 @@ import android.content.Context
 import android.graphics.BitmapFactory
 import android.os.AsyncTask
 import android.util.Log
-import com.example.bricklist1.bitmapByteDownloader
 import com.example.bricklist1.model.Part
 import com.example.bricklist1.model.project
-import com.example.bricklist1.projectList
+import java.io.InputStream
 import java.lang.Exception
+import java.net.HttpURLConnection
+import java.net.URL
 import java.util.*
-import java.util.concurrent.TimeUnit
 
 class dbManager(c: Context){
+
+    class bitmapByteDownloader(d:dbManager,p:Part): AsyncTask<String, Nothing, ByteArray?>() {
+        val dbM = d
+        val part = p
+        private var ba:ByteArray? = ByteArray(1)
+        private fun urlGenerator(type:String,code:String?, color:String?,ext:String):String{
+            val t = if (type=="P" && color=="0") "PL" else type
+            val c = if (color=="0") null else color
+            return  if (c == null){
+                "https://img.bricklink.com/$t/$code.$ext"
+            } else{
+                "https://img.bricklink.com/$t/$c/$code.$ext"
+            }
+        }
+        private fun downloadImage(type:String,code:String?, color:String?): ByteArray?{
+            var urlS =urlGenerator(type,code,color,"gif")
+            Log.i("d",urlS)
+            return try {
+                var url = URL(urlS)
+                var connection: HttpURLConnection = url
+                    .openConnection() as HttpURLConnection
+                connection.setDoInput(true)
+                Log.i("qw","downloading gif")
+                if (connection.responseCode==404){
+                    urlS = urlGenerator(type,code,color,"jpg")
+                    Log.i("d",urlS)
+                    url = URL(urlS)
+                    connection = url
+                        .openConnection() as HttpURLConnection
+                    connection.setDoInput(true)
+                    Log.i("qw","downloading jpg")
+                }
+
+                connection.connect()
+                val input: InputStream = connection.getInputStream()
+                ba = input.readBytes()
+                ba
+            } catch (e: Exception) {
+                e.printStackTrace()
+                null
+            }
+        }
+
+        override fun doInBackground(vararg params: String?): ByteArray? {
+            return downloadImage(params[0].toString(),params[1].toString(),params[2].toString())
+        }
+
+        override fun onPostExecute(result: ByteArray?) {
+            super.onPostExecute(result)
+            if (result!=null){
+                part.updateView(result)
+            }
+        }
+    }
     val db = dbOpener(c,null,"BrickList.db")
     val context = c
     fun close(){
@@ -57,35 +111,51 @@ class dbManager(c: Context){
         return res
     }
 
-    private fun insertImage(partID:Int, colorID:Int, image:ByteArray){
+    fun insertImage(partID:Int, colorID:Int, image:ByteArray){
         val con = ContentValues()
+        db.beginTransaction()
         con.put("Image",image)
-        val sel = Array<String>(2) { partID.toString() }
-        sel[1] = colorID.toString()
-        db.update("Codes",con,"itemId =? AND colorID=?",sel)
+        val q  = "UPDATE Codes SET Image=? WHERE itemID=? AND ColorID=?"
+        val stmt =db.compileStatement(q)
+        stmt.bindBlob(1,image)
+        stmt.bindLong(2,partID.toLong())
+        stmt.bindLong(3,colorID.toLong())
+        stmt.executeUpdateDelete()
+        db.setTransactionSuccessful()
+        db.endTransaction()
     }
     private fun getImageFromCodeAndColorCode(code:String, colorCode:Int):ByteArray?{
-        val partID = getIDpart(code)
+        val partID = code
         val sel = Array<String>(2) { partID.toString() }
         sel[1] = colorCode.toString()
-        val cu = db.rawQuery("SELECT c.Image FROM Codes c WHERE ItemID=? AND colorID=?",sel)
-        val num = cu.count
+        var cu = db.rawQuery("SELECT * FROM Codes WHERE ItemID=? AND colorID=?",sel)
+        cu.moveToFirst()
+        if (cu.count<1){
+            cu.close()
+            insertCode(partID.toInt(),getColorCodeFromID(colorCode))
+            return null
+        }
         var res:ByteArray? = null
-        if (num!=0) res=cu.getBlob(0)
+        if(cu.count>0 && !cu.isNull(cu.getColumnIndex("Image"))) res = cu.getBlob(cu.getColumnIndex("Image"))
+        if (res==null)
+            Log.i("getImage","$partID $colorCode Not Found")
+        else
+            Log.i("getImage","$partID $colorCode found")
         cu.close()
         return res
     }
-    private fun getImageFromCodeAndColorCode(code:String, colorCode:Int, typeCode:String):ByteArray?{
-        var res = getImageFromCodeAndColorCode(code,colorCode)
+    private fun getImageFromCodeAndColorCode(part:Part){
+        val code = part.code
+        val typeCode = part.itemtype
+        val colorCode = getColorCodeFromID(part.colorID)
+        var res = getImageFromCodeAndColorCode(part.itemID.toString(),part.colorID)
         if (res == null) {
-            val bmp = bitmapByteDownloader()
+            val bmp = bitmapByteDownloader(this,part)
             val ex = bmp.execute(typeCode,code,colorCode.toString())
-            res = ex.get(5000,TimeUnit.MILLISECONDS)
-            if ((res != null)) {
-                insertImage(getIDpart(code),getColorIDFromCode(colorCode),res)
-            }
+        }else {
+            part.bitmap = BitmapFactory.decodeByteArray(res, 0, res.size)
+            part.ba = res!!
         }
-        return res
     }
 
     fun getPartFromXML(code:String,color: Int,itemtype:String,required:Int,extra:Int): Part?{
@@ -114,7 +184,6 @@ class dbManager(c: Context){
                         "AND p.TypeID=it.id",sel)
             cu.moveToFirst()
         }
-        val image = getImageFromCodeAndColorCode(code,color,itemtype)
         var res:Part? = null
             res = Part()
             res.code = code
@@ -122,12 +191,12 @@ class dbManager(c: Context){
             res.itemtype = itemtype
             res.required = required
             res.extra = extra
-            res.bitmap = BitmapFactory.decodeByteArray(image,0,0)
             res.found = 0
             res.name = cu.getString(1)
             res.itemID = cu.getInt(0)
             res.color = cu.getString(2)
             res.typeID = cu.getInt(3)
+        getImageFromCodeAndColorCode(res)
         cu.close()
         return res
     }
@@ -269,7 +338,6 @@ class dbManager(c: Context){
     }
     private fun getTypeFromID(typeID:Int): String {
         val sel = Array(1){typeID.toString()}
-        Log.i("$sel[0] getting type",typeID.toString())
         val cuIP = db.rawQuery("SELECT Code from ItemTypes WHERE id = ?",sel)
         cuIP.moveToFirst()
         var res = "P"
@@ -293,8 +361,8 @@ class dbManager(c: Context){
         cVal.put("id",idPart)
         cVal.put("TypeID",getTypeIDFromType(itemType))
         cVal.put("code",code)
-        cVal.put("name","PartOutOfDB")
-        cVal.put("namePL","nwm")
+        cVal.put("name","")
+        cVal.put("namePL","")
         cVal.put("CategoryID",1)
         db.insert("Parts",null,cVal)
         insertCode(idPart,colorCode)
@@ -315,11 +383,9 @@ class dbManager(c: Context){
         return res
     }
 
-    fun loadImages(p:project){
-        for (part in p.partlist){
-            val col = getColorCodeFromID(part.colorID!!)
-            val im = getImageFromCodeAndColorCode(part.code,col,part.itemtype)
-            if (im!=null) part.bitmap = BitmapFactory.decodeByteArray(im,0,im.size)
+    fun loadImages(p:project) {
+        for (part in p.partlist) {
+            getImageFromCodeAndColorCode(part)
         }
     }
 }
